@@ -71,10 +71,14 @@ describe("markdown blocks", () => {
 		assert.ok(html.includes("<li>outer<ul><li>inner</li></ul></li>"), html);
 	});
 
-	it("renders a table", () => {
+	it("renders a table inside its own scroll container", () => {
 		const html = render("| a | b |\n|---|---|\n| 1 | 2 |");
 		assert.ok(html.includes("<th>a</th><th>b</th>"), html);
 		assert.ok(html.includes("<td>1</td><td>2</td>"), html);
+		// A wide table has to scroll on its own; otherwise it widens the whole
+		// conversation and the panel scrolls sideways.
+		assert.ok(html.startsWith('<div class="table-wrap"><table>'), html);
+		assert.ok(html.endsWith("</table></div>"), html);
 	});
 
 	it("renders blockquotes and rules", () => {

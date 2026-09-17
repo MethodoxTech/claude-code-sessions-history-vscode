@@ -41,7 +41,8 @@ project directory so Claude Code can actually find it. The command is configurab
 
 **Fast on real histories.** Session metadata is cached against each transcript's size and
 modification time, so only changed transcripts are re-read. Conversations are paged into the view
-rather than rendered whole — a 60 MB transcript opens without freezing the panel.
+rather than rendered whole — a 60 MB transcript opens without freezing the panel — and
+**Load everything** renders the rest of a long session in one go.
 
 ## Usage
 
