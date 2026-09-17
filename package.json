@@ -1,0 +1,391 @@
+{
+	"name": "claude-code-sessions-history",
+	"displayName": "Claude Code Sessions History",
+	"description": "Browse, search and export your Claude Code session history. Fully local, no telemetry, no paywall.",
+	"version": "0.1.0",
+	"publisher": "methodox",
+	"license": "MIT",
+	"author": "Charles Zhang",
+	"repository": "github:MethodoxTech/claude-code-sessions-history-vscode",
+	"icon": "media/icon.png",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": [
+		"Other",
+		"Visualization"
+	],
+	"keywords": [
+		"claude",
+		"claude code",
+		"anthropic",
+		"session history",
+		"conversation",
+		"transcript",
+		"AI",
+		"LLM"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "claudeSessions",
+					"title": "Claude Sessions",
+					"icon": "media/activity-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"claudeSessions": [
+				{
+					"id": "claudeSessions.tree",
+					"name": "Sessions",
+					"icon": "media/activity-icon.svg"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "claudeSessions.tree",
+				"contents": "No Claude Code sessions found.\n\nSessions are read from your Claude Code home directory (`~/.claude/projects`). Run Claude Code at least once, or point the extension at a different location.\n[Open Settings](command:claudeSessions.openSettings)\n[Refresh](command:claudeSessions.refresh)"
+			}
+		],
+		"commands": [
+			{
+				"command": "claudeSessions.openBrowser",
+				"title": "Open Session Browser",
+				"category": "Claude Sessions",
+				"icon": "$(window)"
+			},
+			{
+				"command": "claudeSessions.refresh",
+				"title": "Refresh",
+				"category": "Claude Sessions",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "claudeSessions.rescan",
+				"title": "Rescan All Sessions (Clear Cache)",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.openSession",
+				"title": "Open Session",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.search",
+				"title": "Search Sessions",
+				"category": "Claude Sessions",
+				"icon": "$(search)"
+			},
+			{
+				"command": "claudeSessions.showStats",
+				"title": "Show Statistics",
+				"category": "Claude Sessions",
+				"icon": "$(graph)"
+			},
+			{
+				"command": "claudeSessions.resume",
+				"title": "Resume Session in Terminal",
+				"category": "Claude Sessions",
+				"icon": "$(debug-continue)"
+			},
+			{
+				"command": "claudeSessions.exportMarkdown",
+				"title": "Export Session as Markdown",
+				"category": "Claude Sessions",
+				"icon": "$(markdown)"
+			},
+			{
+				"command": "claudeSessions.exportRange",
+				"title": "Export Sessions in Date Range as Markdown",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.toggleBookmark",
+				"title": "Toggle Bookmark",
+				"category": "Claude Sessions",
+				"icon": "$(star-empty)"
+			},
+			{
+				"command": "claudeSessions.removeBookmark",
+				"title": "Remove Bookmark",
+				"category": "Claude Sessions",
+				"icon": "$(star-full)"
+			},
+			{
+				"command": "claudeSessions.toggleBookmarkFilter",
+				"title": "Show Bookmarked Sessions Only",
+				"category": "Claude Sessions",
+				"icon": "$(star-empty)"
+			},
+			{
+				"command": "claudeSessions.clearBookmarkFilter",
+				"title": "Show All Sessions",
+				"category": "Claude Sessions",
+				"icon": "$(star-full)"
+			},
+			{
+				"command": "claudeSessions.groupByDate",
+				"title": "Group Sessions by Date",
+				"category": "Claude Sessions",
+				"icon": "$(calendar)"
+			},
+			{
+				"command": "claudeSessions.groupByProject",
+				"title": "Group Sessions by Project",
+				"category": "Claude Sessions",
+				"icon": "$(folder)"
+			},
+			{
+				"command": "claudeSessions.copySessionId",
+				"title": "Copy Session ID",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.revealTranscript",
+				"title": "Reveal Transcript File",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.openTranscript",
+				"title": "Open Raw Transcript (.jsonl)",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.openProjectFolder",
+				"title": "Open Project Folder",
+				"category": "Claude Sessions"
+			},
+			{
+				"command": "claudeSessions.openSettings",
+				"title": "Open Settings",
+				"category": "Claude Sessions"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "claudeSessions.openBrowser",
+				"key": "ctrl+shift+h",
+				"mac": "cmd+shift+h"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "claudeSessions.openSession",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.toggleBookmark",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.removeBookmark",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.clearBookmarkFilter",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.groupByDate",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.groupByProject",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.copySessionId",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.revealTranscript",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.openTranscript",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.openProjectFolder",
+					"when": "false"
+				}
+			],
+			"view/title": [
+				{
+					"command": "claudeSessions.search",
+					"when": "view == claudeSessions.tree",
+					"group": "navigation@1"
+				},
+				{
+					"command": "claudeSessions.toggleBookmarkFilter",
+					"when": "view == claudeSessions.tree && !claudeSessions.bookmarksOnly",
+					"group": "navigation@2"
+				},
+				{
+					"command": "claudeSessions.clearBookmarkFilter",
+					"when": "view == claudeSessions.tree && claudeSessions.bookmarksOnly",
+					"group": "navigation@2"
+				},
+				{
+					"command": "claudeSessions.openBrowser",
+					"when": "view == claudeSessions.tree",
+					"group": "navigation@3"
+				},
+				{
+					"command": "claudeSessions.refresh",
+					"when": "view == claudeSessions.tree",
+					"group": "navigation@4"
+				},
+				{
+					"command": "claudeSessions.groupByProject",
+					"when": "view == claudeSessions.tree && claudeSessions.groupBy == date",
+					"group": "1_group@1"
+				},
+				{
+					"command": "claudeSessions.groupByDate",
+					"when": "view == claudeSessions.tree && claudeSessions.groupBy != date",
+					"group": "1_group@1"
+				},
+				{
+					"command": "claudeSessions.showStats",
+					"when": "view == claudeSessions.tree",
+					"group": "2_tools@1"
+				},
+				{
+					"command": "claudeSessions.exportRange",
+					"when": "view == claudeSessions.tree",
+					"group": "2_tools@2"
+				},
+				{
+					"command": "claudeSessions.rescan",
+					"when": "view == claudeSessions.tree",
+					"group": "3_maintenance@1"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "claudeSessions.toggleBookmark",
+					"when": "view == claudeSessions.tree && viewItem == session.plain",
+					"group": "inline@1"
+				},
+				{
+					"command": "claudeSessions.removeBookmark",
+					"when": "view == claudeSessions.tree && viewItem == session.bookmarked",
+					"group": "inline@1"
+				},
+				{
+					"command": "claudeSessions.resume",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "1_run@1"
+				},
+				{
+					"command": "claudeSessions.exportMarkdown",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "2_export@1"
+				},
+				{
+					"command": "claudeSessions.copySessionId",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "3_copy@1"
+				},
+				{
+					"command": "claudeSessions.openTranscript",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "4_open@1"
+				},
+				{
+					"command": "claudeSessions.revealTranscript",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "4_open@2"
+				},
+				{
+					"command": "claudeSessions.openProjectFolder",
+					"when": "view == claudeSessions.tree && viewItem == project",
+					"group": "4_open@1"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Claude Code Sessions History",
+			"properties": {
+				"claudeSessions.claudeHome": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "Absolute path to the Claude Code home directory that holds the `projects` folder. Leave empty to use `$CLAUDE_CONFIG_DIR` if set, otherwise `~/.claude`."
+				},
+				"claudeSessions.groupBy": {
+					"type": "string",
+					"enum": [
+						"date",
+						"project"
+					],
+					"default": "date",
+					"description": "How sessions are grouped in the Sessions tree view."
+				},
+				"claudeSessions.showThinking": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show collapsible thinking blocks in the conversation view."
+				},
+				"claudeSessions.showToolCalls": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show collapsible tool calls in the conversation view."
+				},
+				"claudeSessions.showSidechains": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show subagent (sidechain) messages in the conversation view."
+				},
+				"claudeSessions.toolOutputLimit": {
+					"type": "number",
+					"default": 4000,
+					"minimum": 200,
+					"maximum": 100000,
+					"description": "Maximum number of characters of tool output kept per tool call. Longer output is truncated."
+				},
+				"claudeSessions.pageSize": {
+					"type": "number",
+					"default": 60,
+					"minimum": 10,
+					"maximum": 1000,
+					"description": "Number of messages rendered per batch in the conversation view. Lower values keep very long sessions responsive."
+				},
+				"claudeSessions.deepSearchIncludesToolCalls": {
+					"type": "boolean",
+					"default": false,
+					"description": "Include tool inputs and outputs when running a deep search across all sessions."
+				},
+				"claudeSessions.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "Watch the Claude Code projects folder and refresh the session list automatically when transcripts change."
+				},
+				"claudeSessions.resumeCommand": {
+					"type": "string",
+					"default": "claude --resume {sessionId}",
+					"markdownDescription": "Command run in the terminal by **Resume Session**. `{sessionId}` is replaced with the session id and `{projectPath}` with the project directory."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"test": "npm run compile && node --test \"out/test/*.test.js\"",
+		"icon": "node scripts/generate-icon.js",
+		"package": "vsce package --no-dependencies"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"@types/vscode": "^1.85.0",
+		"typescript": "^5.3.0"
+	}
+}
