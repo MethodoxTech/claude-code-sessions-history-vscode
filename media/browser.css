@@ -92,6 +92,17 @@ body.vscode-high-contrast:not(.vscode-high-contrast-light) {
 	box-sizing: border-box;
 }
 
+/*
+ * The browser's own `[hidden] { display: none }` lives in the user-agent
+ * stylesheet, and any author `display` outranks it. Several elements here set
+ * one — `.sidebar` and `.empty` are both flex — so without this reset they stay
+ * on screen after `element.hidden = true`, and the welcome panel keeps its full
+ * viewport height above the conversation.
+ */
+[hidden] {
+	display: none !important;
+}
+
 html,
 body {
 	height: 100%;
@@ -517,6 +528,55 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .star:hover {
 	background: var(--fill-hover);
+}
+
+/* === Context menu ===
+ *
+ * A flyout, so it takes the house radius and the flyout shadow rather than a
+ * card's near-invisible one. Items are 28px controls and change fill on hover,
+ * never opacity.
+ */
+
+.menu {
+	position: fixed;
+	z-index: 20;
+	min-width: 180px;
+	padding: var(--space-1);
+	border: 1px solid var(--stroke-surface);
+	border-radius: var(--radius-md);
+	background: var(--vscode-menu-background, var(--surface-card));
+	box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.menu-item {
+	display: block;
+	width: 100%;
+	height: var(--control-sm);
+	padding: 0 var(--space-3);
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--vscode-menu-foreground, var(--text-strong));
+	font: inherit;
+	font-size: 12px;
+	line-height: var(--control-sm);
+	text-align: left;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background var(--duration-instant) var(--ease-standard);
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+	background: var(--accent-wash-strong);
+	color: var(--accent);
+	outline: none;
+}
+
+.menu-separator {
+	height: 1px;
+	margin: var(--space-1) var(--space-2);
+	background: var(--stroke-card);
 }
 
 /* === Empty and loading states === */

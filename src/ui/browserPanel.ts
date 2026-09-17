@@ -453,6 +453,7 @@ export class BrowserPanel {
 			</section>
 		</main>
 	</div>
+	<div class="menu" id="menu" role="menu" hidden></div>
 	<script nonce="${nonce}" src="${media("markdown.js")}"></script>
 	<script nonce="${nonce}" src="${media("browser.js")}"></script>
 </body>

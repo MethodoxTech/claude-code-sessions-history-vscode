@@ -22,8 +22,12 @@ import {
 	ToolUseBlock,
 } from "../claude/types";
 
-/** Bumped whenever the cached shape of SessionMeta changes. */
-const CACHE_VERSION = 3;
+/**
+ * Bumped whenever the cached shape or content of SessionMeta changes, so an
+ * existing cache is discarded rather than serving stale results forever — a
+ * transcript that has not changed is otherwise never re-read.
+ */
+const CACHE_VERSION = 4;
 
 interface CacheEntry {
 	mtimeMs: number;

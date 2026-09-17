@@ -138,6 +138,36 @@ describe("scanSessionMeta", () => {
 		assert.equal(meta.totalTokens, 15);
 	});
 
+	it("keeps one entry per pull request, however often it was recorded", async () => {
+		// Claude Code re-writes the pr-link record on every turn after a pull
+		// request is opened, so a long session accumulates hundreds of copies
+		// of the same few links.
+		const records: unknown[] = [
+			{
+				type: "user",
+				timestamp: "2026-09-01T10:00:00.000Z",
+				message: { role: "user", content: "Open a pull request" },
+			},
+			{
+				type: "assistant",
+				message: { role: "assistant", model: "claude-opus-5", content: [{ type: "text", text: "Done." }] },
+			},
+		];
+		for (let i = 0; i < 40; i++) {
+			records.push({ type: "pr-link", prUrl: "https://example.com/o/r/pull/8", prNumber: 8, prRepository: "o/r" });
+			records.push({ type: "pr-link", prUrl: "https://example.com/o/r/pull/3", prNumber: 3, prRepository: "o/r" });
+		}
+
+		const meta = await scanSessionMeta(writeTranscript("prs.jsonl", records), "p", 10);
+		assert.ok(meta);
+		assert.equal(meta.prLinks.length, 2);
+		// Sorted by number, so the header reads in a predictable order.
+		assert.deepEqual(
+			meta.prLinks.map((pr) => pr.number),
+			[3, 8]
+		);
+	});
+
 	it("falls back to the first real message when no title was generated", async () => {
 		const filePath = writeTranscript("untitled.jsonl", [
 			{

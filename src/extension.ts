@@ -26,12 +26,22 @@ export function activate(context: vscode.ExtensionContext): void {
 	const bookmarks = new BookmarkStore(context.globalState);
 	const tree = new SessionTreeProvider(store, bookmarks);
 
-	const view = vscode.window.createTreeView("claudeSessions.tree", {
-		treeDataProvider: tree,
-		showCollapseAll: true,
-	});
+	// The tree is contributed behind a `when` clause on
+	// claudeSessions.showInActivityBar, so it can be hidden without uninstalling
+	// the extension. Registration is independent of that visibility, but if it
+	// ever fails the browser panel should still work.
+	let view: vscode.TreeView<unknown> | undefined;
+	try {
+		view = vscode.window.createTreeView("claudeSessions.tree", {
+			treeDataProvider: tree,
+			showCollapseAll: true,
+		});
+		context.subscriptions.push(view);
+	} catch {
+		view = undefined;
+	}
 
-	context.subscriptions.push(view, bookmarks);
+	context.subscriptions.push(bookmarks);
 	void vscode.commands.executeCommand("setContext", "claudeSessions.bookmarksOnly", false);
 
 	context.subscriptions.push(bookmarks.onDidChange(() => tree.refresh()));
@@ -77,7 +87,9 @@ export function activate(context: vscode.ExtensionContext): void {
 			return;
 		}
 		tree.setFilter(query);
-		view.description = query ? `filtered: ${query}` : undefined;
+		if (view) {
+			view.description = query ? `filtered: ${query}` : undefined;
+		}
 	});
 
 	register("claudeSessions.toggleBookmarkFilter", () => {
@@ -137,6 +149,18 @@ export function activate(context: vscode.ExtensionContext): void {
 		const panel = BrowserPanel.show(context, store, bookmarks);
 		void panel;
 		void vscode.commands.executeCommand("claudeSessions.openBrowser");
+	});
+
+	register("claudeSessions.copyTitle", async (target?: SessionMeta | SessionTreeItem) => {
+		const session = resolveSession(target);
+		if (!session) {
+			return;
+		}
+		// A session with no generated title still shows its first message as
+		// one, so copy whatever the list is actually displaying.
+		const title = session.title || session.preview || session.id;
+		await vscode.env.clipboard.writeText(title);
+		void vscode.window.showInformationMessage(`Copied "${truncate(title, 60)}"`);
 	});
 
 	register("claudeSessions.copySessionId", async (target?: SessionMeta | SessionTreeItem) => {
@@ -218,6 +242,11 @@ async function setGroupBy(value: "date" | "project"): Promise<void> {
 	await vscode.workspace
 		.getConfiguration("claudeSessions")
 		.update("groupBy", value, vscode.ConfigurationTarget.Global);
+}
+
+function truncate(text: string, limit: number): string {
+	const flattened = text.replace(/\s+/g, " ").trim();
+	return flattened.length > limit ? flattened.slice(0, limit - 1) + "…" : flattened;
 }
 
 function resolveSession(target?: SessionMeta | SessionTreeItem): SessionMeta | undefined {

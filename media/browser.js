@@ -11,6 +11,9 @@
 
 	const vscode = acquireVsCodeApi();
 
+	/** Pull request buttons shown in a session header before collapsing. */
+	const PR_LINKS_SHOWN = 4;
+
 	// === Icons ===
 	//
 	// Lucide geometry (24px grid, 2px stroke, round caps), inlined as CSS masks
@@ -122,6 +125,7 @@
 		welcome: document.getElementById("welcome"),
 		conversation: document.getElementById("conversation"),
 		stats: document.getElementById("stats"),
+		menu: document.getElementById("menu"),
 		tabs: Array.prototype.slice.call(document.querySelectorAll(".tab")),
 	};
 
@@ -449,11 +453,17 @@
 			"</div>";
 
 		if (meta.prLinks && meta.prLinks.length > 0) {
-			header += '<div class="conv-facts" style="margin-top:8px">';
+			header += '<div class="conv-facts" id="pr-links" style="margin-top:8px">';
 			for (let i = 0; i < meta.prLinks.length; i++) {
 				const pr = meta.prLinks[i];
+				// A long session can touch a dozen pull requests; show the first
+				// few and keep the rest one click away rather than filling the
+				// header with a wall of buttons.
+				const extra = i >= PR_LINKS_SHOWN ? ' class="button pr-extra" hidden' : ' class="button"';
 				header +=
-					'<button class="button" data-icon data-external="' +
+					"<button" +
+					extra +
+					' data-icon data-external="' +
 					escapeHtml(pr.url) +
 					'" style="--icon:var(--icon-external)">' +
 					escapeHtml(
@@ -464,6 +474,12 @@
 								: "Pull request"
 					) +
 					"</button>";
+			}
+			if (meta.prLinks.length > PR_LINKS_SHOWN) {
+				header +=
+					'<button class="button" data-action="more-prs">Show ' +
+					(meta.prLinks.length - PR_LINKS_SHOWN) +
+					" more</button>";
 			}
 			header += "</div>";
 		}
@@ -973,6 +989,129 @@
 		}
 	});
 
+	// === Context menu ===
+
+	/**
+	 * The session behind a list row. Deep-search results are not in
+	 * state.sessions until the next index, so the matches are checked too.
+	 */
+	function sessionByPath(filePath) {
+		for (let i = 0; i < state.sessions.length; i++) {
+			if (state.sessions[i].filePath === filePath) {
+				return state.sessions[i];
+			}
+		}
+		for (let i = 0; i < state.matches.length; i++) {
+			if (state.matches[i].meta.filePath === filePath) {
+				return state.matches[i].meta;
+			}
+		}
+		return null;
+	}
+
+	function closeMenu() {
+		el.menu.hidden = true;
+		el.menu.innerHTML = "";
+	}
+
+	function openMenu(x, y, items) {
+		let html = "";
+		for (let i = 0; i < items.length; i++) {
+			html += items[i].separator
+				? '<div class="menu-separator"></div>'
+				: '<button class="menu-item" type="button" role="menuitem" data-item="' + i + '">' +
+					escapeHtml(items[i].label) +
+					"</button>";
+		}
+		el.menu.innerHTML = html;
+		el.menu.hidden = false;
+
+		// Measure once visible, then keep the menu inside the viewport.
+		const size = el.menu.getBoundingClientRect();
+		const left = Math.max(4, Math.min(x, window.innerWidth - size.width - 4));
+		const top = Math.max(4, Math.min(y, window.innerHeight - size.height - 4));
+		el.menu.style.left = left + "px";
+		el.menu.style.top = top + "px";
+
+		el.menu.onclick = function (event) {
+			const button = event.target.closest("[data-item]");
+			if (!button) {
+				return;
+			}
+			const item = items[Number(button.dataset.item)];
+			closeMenu();
+			if (item && item.run) {
+				item.run();
+			}
+		};
+
+		const first = el.menu.querySelector(".menu-item");
+		if (first) {
+			first.focus();
+		}
+	}
+
+	function copy(text) {
+		vscode.postMessage({ type: "copy", text: text });
+	}
+
+	el.list.addEventListener("contextmenu", function (event) {
+		const row = event.target.closest(".row");
+		if (!row) {
+			return;
+		}
+		const session = sessionByPath(row.dataset.path);
+		if (!session) {
+			return;
+		}
+		event.preventDefault();
+
+		const title = session.title || session.preview || session.id;
+		const bookmarked = state.bookmarks.indexOf(session.id) !== -1;
+
+		openMenu(event.clientX, event.clientY, [
+			{ label: "Copy title", run: function () { copy(title); } },
+			{ label: "Copy session ID", run: function () { copy(session.id); } },
+			{ label: "Copy project path", run: function () { copy(session.projectPath); } },
+			{ separator: true },
+			{
+				label: bookmarked ? "Remove bookmark" : "Bookmark session",
+				run: function () {
+					vscode.postMessage({ type: "toggleBookmark", id: session.id });
+				},
+			},
+			{ separator: true },
+			{
+				label: "Open transcript",
+				run: function () {
+					vscode.postMessage({ type: "openFile", filePath: session.filePath });
+				},
+			},
+			{
+				label: "Reveal transcript",
+				run: function () {
+					vscode.postMessage({ type: "revealFile", filePath: session.filePath });
+				},
+			},
+		]);
+	});
+
+	document.addEventListener("mousedown", function (event) {
+		if (!el.menu.hidden && !event.target.closest("#menu")) {
+			closeMenu();
+		}
+	});
+
+	document.addEventListener("keydown", function (event) {
+		if (event.key === "Escape" && !el.menu.hidden) {
+			closeMenu();
+		}
+	});
+
+	// A menu pinned to viewport coordinates would drift away from its row.
+	el.list.addEventListener("scroll", closeMenu);
+	window.addEventListener("blur", closeMenu);
+
 	function openSession(filePath, jumpIndex) {
 		state.selected = filePath;
 		state.pendingJump = typeof jumpIndex === "number" ? jumpIndex : null;
@@ -1029,6 +1168,14 @@
 					vscode.postMessage({ type: "toggleBookmark", id: state.meta.id });
 				}
 				break;
+			case "more-prs": {
+				const hidden = el.conversation.querySelectorAll(".pr-extra");
+				for (let i = 0; i < hidden.length; i++) {
+					hidden[i].hidden = false;
+				}
+				target.remove();
+				break;
+			}
 			case "export-range": {
 				const start = document.getElementById("range-start");
 				const end = document.getElementById("range-end");

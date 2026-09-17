@@ -2,7 +2,7 @@
 	"name": "claude-code-sessions-history",
 	"displayName": "Claude Code Sessions History",
 	"description": "Browse, search and export your Claude Code session history. Fully local, no telemetry, no paywall.",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"publisher": "methodox",
 	"license": "MIT",
 	"author": "Charles Zhang",
@@ -42,7 +42,8 @@
 				{
 					"id": "claudeSessions.tree",
 					"name": "Sessions",
-					"icon": "media/activity-icon.svg"
+					"icon": "media/activity-icon.svg",
+					"when": "config.claudeSessions.showInActivityBar"
 				}
 			]
 		},
@@ -141,6 +142,11 @@
 				"icon": "$(folder)"
 			},
 			{
+				"command": "claudeSessions.copyTitle",
+				"title": "Copy Session Title",
+				"category": "Claude Sessions"
+			},
+			{
 				"command": "claudeSessions.copySessionId",
 				"title": "Copy Session ID",
 				"category": "Claude Sessions"
@@ -213,6 +219,10 @@
 				},
 				{
 					"command": "claudeSessions.openProjectFolder",
+					"when": "false"
+				},
+				{
+					"command": "claudeSessions.copyTitle",
 					"when": "false"
 				}
 			],
@@ -290,9 +300,14 @@
 					"group": "2_export@1"
 				},
 				{
-					"command": "claudeSessions.copySessionId",
+					"command": "claudeSessions.copyTitle",
 					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
 					"group": "3_copy@1"
+				},
+				{
+					"command": "claudeSessions.copySessionId",
+					"when": "view == claudeSessions.tree && viewItem =~ /^session/",
+					"group": "3_copy@2"
 				},
 				{
 					"command": "claudeSessions.openTranscript",
@@ -314,6 +329,11 @@
 		"configuration": {
 			"title": "Claude Code Sessions History",
 			"properties": {
+				"claudeSessions.showInActivityBar": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Show the Claude Sessions icon in the activity bar. Turn this off to keep the extension without the icon — the session browser is still available from the command palette and from `Ctrl+Shift+H` (`Cmd+Shift+H` on macOS)."
+				},
 				"claudeSessions.claudeHome": {
 					"type": "string",
 					"default": "",

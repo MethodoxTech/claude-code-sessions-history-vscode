@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.1
+
+- Fix the welcome panel staying on screen behind an opened session, which left a
+  full viewport of placeholder text above the conversation and the statistics.
+  A user-agent `[hidden]` rule loses to any author `display`, and both the
+  welcome panel and the sidebar set one
+- Show each pull request once in a session header. Claude Code re-writes its
+  `pr-link` record on every turn, so a long session repeated the same few links
+  dozens of times. Headers with more than four now collapse the rest behind a
+  disclosure
+- Add `claudeSessions.showInActivityBar` to hide the activity bar icon while
+  keeping the extension installed
+- Right-click a session in the browser panel's list to copy its title, session
+  id or project path, toggle its bookmark, or open its transcript. **Copy
+  Session Title** is also on the tree view's context menu
+
 ## 0.1.0
 
 First release.
