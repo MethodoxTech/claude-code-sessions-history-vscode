@@ -412,8 +412,11 @@ export async function scanSessionMeta(
 	let totalTokens = 0;
 
 	const models: string[] = [];
-	const prLinks: SessionMeta["prLinks"] = [];
 	const filesTouched = new Set<string>();
+	// Claude Code re-writes the `pr-link` record on every subsequent turn, so a
+	// long session can hold hundreds of copies of the same handful of pull
+	// requests. Key on the URL and keep the first sighting of each.
+	const prLinks = new Map<string, SessionMeta["prLinks"][number]>();
 
 	await readTranscript(
 		filePath,
@@ -456,8 +459,8 @@ export async function scanSessionMeta(
 					break;
 				}
 				case "pr-link": {
-					if (typeof record.prUrl === "string") {
-						prLinks.push({
+					if (typeof record.prUrl === "string" && !prLinks.has(record.prUrl)) {
+						prLinks.set(record.prUrl, {
 							url: record.prUrl,
 							number: typeof record.prNumber === "number" ? record.prNumber : undefined,
 							repository: typeof record.prRepository === "string" ? record.prRepository : undefined,
@@ -579,7 +582,7 @@ export async function scanSessionMeta(
 		fileSize,
 		hasSidechains,
 		hasErrors,
-		prLinks,
+		prLinks: Array.from(prLinks.values()).sort((a, b) => (a.number || 0) - (b.number || 0)),
 		filesTouched: Array.from(filesTouched),
 		totalTokens: totalTokens > 0 ? totalTokens : undefined,
 	};

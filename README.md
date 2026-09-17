@@ -60,6 +60,7 @@ Everything is also available from the command palette under **Claude Sessions**.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `claudeSessions.showInActivityBar` | `true` | Show the icon in the activity bar. Off keeps the extension without the icon. |
 | `claudeSessions.claudeHome` | *(empty)* | Where to read transcripts from. Empty uses `$CLAUDE_CONFIG_DIR`, then `~/.claude`. |
 | `claudeSessions.groupBy` | `date` | Group the tree by `date` or by `project`. |
 | `claudeSessions.showThinking` | `true` | Show thinking blocks. |
