@@ -2,7 +2,7 @@
 	"name": "claude-code-sessions-history",
 	"displayName": "Claude Code Sessions History",
 	"description": "Browse, search and export your Claude Code session history. Fully local, no telemetry, no paywall.",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"publisher": "methodox",
 	"license": "MIT",
 	"author": "Charles Zhang",

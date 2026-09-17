@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1
+## 0.1.2
 
 - Add **Load everything** beside **Show more**, to render the rest of a session
   in one go. A long session needed dozens of clicks to read through; the
@@ -14,6 +14,9 @@
   whole view into a horizontal scroll with empty space to the right
 - Wide tables in a message now scroll on their own instead of widening the
   conversation
+
+## 0.1.1
+
 - Fix the welcome panel staying on screen behind an opened session, which left a
   full viewport of placeholder text above the conversation and the statistics.
   A user-agent `[hidden]` rule loses to any author `display`, and both the
