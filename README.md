@@ -121,6 +121,6 @@ current Claude Code transcript format and released with every feature unlocked.
 
 ## License
 
-MIT. See [LICENSE.txt](LICENSE.txt).
+MIT. See [LICENSE.txt](https://github.com/MethodoxTech/claude-code-sessions-history-vscode/blob/main/LICENSE.txt).
 
 Built by [Methodox Technologies, Inc.](https://methodox.io)
