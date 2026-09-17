@@ -164,7 +164,9 @@
 
 	function renderTable(rows) {
 		const header = splitRow(rows[0]);
-		let html = "<table><thead><tr>";
+		// Wrapped so a table wider than the column scrolls on its own rather
+		// than forcing the whole conversation sideways.
+		let html = '<div class="table-wrap"><table><thead><tr>';
 		for (let i = 0; i < header.length; i++) {
 			html += "<th>" + renderInline(header[i]) + "</th>";
 		}
@@ -178,7 +180,7 @@
 			}
 			html += "</tr>";
 		}
-		return html + "</tbody></table>";
+		return html + "</tbody></table></div>";
 	}
 
 	function renderList(lines, fences) {

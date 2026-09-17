@@ -14,6 +14,13 @@
 	/** Pull request buttons shown in a session header before collapsing. */
 	const PR_LINKS_SHOWN = 4;
 
+	/**
+	 * Messages per batch while loading a whole session. Larger batches mean
+	 * fewer round trips; smaller ones keep each render short enough that the
+	 * view can paint and Stop stays responsive.
+	 */
+	const LOAD_ALL_BATCH = 250;
+
 	// === Icons ===
 	//
 	// Lucide geometry (24px grid, 2px stroke, round caps), inlined as CSS masks
@@ -96,6 +103,7 @@
 		total: 0,
 		rendered: 0,
 		searching: false,
+		loadingAll: false,
 	};
 
 	function persist() {
@@ -446,7 +454,7 @@
 		}
 
 		let header =
-			'<header class="conv-header"><div><h2>' +
+			'<header class="conv-header"><div class="conv-header-text"><h2>' +
 			escapeHtml(meta.title || truncate(meta.preview, 90) || "Session") +
 			'</h2><div class="conv-facts">' +
 			facts.join("") +
@@ -512,27 +520,60 @@
 		if (replace) {
 			host.innerHTML = html;
 			state.rendered = messages.length;
+			addCopyButtons(host);
 		} else {
-			host.insertAdjacentHTML("beforeend", html);
+			// Build the batch off-document so its copy buttons are attached
+			// without rescanning what is already on screen; doing that on every
+			// page makes each one cost more than the last.
+			const batch = document.createElement("div");
+			batch.innerHTML = html;
+			addCopyButtons(batch);
+
+			const fragment = document.createDocumentFragment();
+			while (batch.firstChild) {
+				fragment.appendChild(batch.firstChild);
+			}
+			host.appendChild(fragment);
 			state.rendered += messages.length;
 		}
 
-		const existing = el.conversation.querySelector(".load-more");
+		renderConversationFooter();
+	}
+
+	/** The paging controls under the conversation, or nothing once it is whole. */
+	function renderConversationFooter() {
+		const existing = el.conversation.querySelector(".load-more-row");
 		if (existing) {
 			existing.remove();
 		}
-		if (state.rendered < state.total) {
-			const remaining = state.total - state.rendered;
-			el.conversation.insertAdjacentHTML(
-				"beforeend",
-				'<button class="load-more" type="button">Show more — ' +
-					remaining +
-					(remaining === 1 ? " message left" : " messages left") +
-					"</button>"
-			);
+		if (state.rendered >= state.total) {
+			return;
 		}
 
-		addCopyButtons(host);
+		let html = '<div class="load-more-row">';
+		if (state.loadingAll) {
+			html +=
+				'<span class="load-more-status">Loading <span class="num">' +
+				state.rendered +
+				'</span> of <span class="num">' +
+				state.total +
+				"</span> messages</span>" +
+				'<button class="button" type="button" data-action="stop-loading">Stop</button>';
+		} else {
+			const remaining = state.total - state.rendered;
+			html +=
+				'<button class="load-more" type="button" data-action="load-more">Show more — ' +
+				remaining +
+				(remaining === 1 ? " message left" : " messages left") +
+				"</button>" +
+				'<button class="button" type="button" data-action="load-all" ' +
+				'title="Render the rest of this session in one go">Load everything</button>';
+		}
+		el.conversation.insertAdjacentHTML("beforeend", html + "</div>");
+	}
+
+	function requestNextBatch() {
+		vscode.postMessage({ type: "loadMore", offset: state.rendered, chunk: LOAD_ALL_BATCH });
 	}
 
 	function renderMessage(message) {
@@ -1131,11 +1172,6 @@
 			return;
 		}
 
-		if (target.classList.contains("load-more")) {
-			vscode.postMessage({ type: "loadMore", offset: state.rendered });
-			return;
-		}
-
 		if (target.dataset.external) {
 			vscode.postMessage({ type: "openExternal", url: target.dataset.external });
 			return;
@@ -1167,6 +1203,18 @@
 				if (state.meta) {
 					vscode.postMessage({ type: "toggleBookmark", id: state.meta.id });
 				}
+				break;
+			case "load-more":
+				vscode.postMessage({ type: "loadMore", offset: state.rendered });
+				break;
+			case "load-all":
+				state.loadingAll = true;
+				renderConversationFooter();
+				requestNextBatch();
+				break;
+			case "stop-loading":
+				state.loadingAll = false;
+				renderConversationFooter();
 				break;
 			case "more-prs": {
 				const hidden = el.conversation.querySelectorAll(".pr-extra");
@@ -1234,6 +1282,7 @@
 			}
 
 			case "sessionOpened": {
+				state.loadingAll = false;
 				state.meta = message.meta;
 				state.messages = message.messages || [];
 				state.total = message.total || 0;
@@ -1265,6 +1314,17 @@
 						target.scrollIntoView({ block: "center" });
 					}
 					state.pendingJump = null;
+				}
+
+				if (state.loadingAll) {
+					if (state.rendered < state.total) {
+						// Ask for the next batch from a fresh task, so the view
+						// paints between batches and Stop stays clickable.
+						setTimeout(requestNextBatch, 0);
+					} else {
+						state.loadingAll = false;
+						renderConversationFooter();
+					}
 				}
 				break;
 			}

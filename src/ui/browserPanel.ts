@@ -18,6 +18,9 @@ import { ConversationMessage, SessionMeta } from "../claude/types";
 import { anyDirname, fileExists } from "../claude/paths";
 import { exportRange, exportSession, resumeSession } from "./actions";
 
+/** Upper bound on messages sent to the webview in one batch. */
+const MAX_BATCH = 500;
+
 interface OpenSession {
 	meta: SessionMeta;
 	messages: ConversationMessage[];
@@ -165,10 +168,15 @@ export class BrowserPanel {
 					break;
 				}
 				const offset = Number(message.offset) || 0;
+				// "Load everything" asks for larger batches than a single page.
+				// The cap keeps one batch small enough to render without the
+				// view locking up, however large a number arrives.
+				const requested = Number(message.chunk) || this.pageSize();
+				const size = Math.min(Math.max(requested, 1), MAX_BATCH);
 				this.post({
 					type: "sessionPage",
 					offset,
-					messages: this.open.messages.slice(offset, offset + this.pageSize()),
+					messages: this.open.messages.slice(offset, offset + size),
 				});
 				break;
 			}

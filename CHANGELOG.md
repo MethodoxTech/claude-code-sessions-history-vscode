@@ -2,6 +2,18 @@
 
 ## 0.1.1
 
+- Add **Load everything** beside **Show more**, to render the rest of a session
+  in one go. A long session needed dozens of clicks to read through; the
+  remainder now streams in batches with a running count and a Stop button
+- Paging no longer slows down as a conversation grows. Copy buttons were
+  attached by rescanning the whole conversation after every batch, so each page
+  cost more than the last; each batch is now prepared off-document and only its
+  own code blocks are scanned
+- Fix the conversation header forcing the panel wider than its window. The
+  action buttons neither shrink nor wrap, so on a narrow layout they pushed the
+  whole view into a horizontal scroll with empty space to the right
+- Wide tables in a message now scroll on their own instead of widening the
+  conversation
 - Fix the welcome panel staying on screen behind an opened session, which left a
   full viewport of placeholder text above the conversation and the statistics.
   A user-agent `[hidden]` rule loses to any author `display`, and both the
