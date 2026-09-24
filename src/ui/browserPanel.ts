@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 import { BookmarkStore } from "../store/bookmarks";
 import { SessionStore } from "../store/sessionStore";
 import { ConversationMessage, SessionMeta } from "../claude/types";
+import { MessageScope, filterMessages, isMessageScope, parseQuery } from "../claude/filter";
 import { anyDirname, fileExists } from "../claude/paths";
 import { exportRange, exportSession, resumeSession } from "./actions";
 
@@ -23,7 +24,16 @@ const MAX_BATCH = 500;
 
 interface OpenSession {
 	meta: SessionMeta;
+	/** Every message in the session, in order. */
 	messages: ConversationMessage[];
+	/**
+	 * What the webview is currently paging through: the whole session, or the
+	 * subset a filter narrowed it to. Paging reads this rather than `messages`,
+	 * so filtering needed no separate paging path.
+	 */
+	view: ConversationMessage[];
+	query: string;
+	scope: MessageScope;
 }
 
 export class BrowserPanel {
@@ -114,7 +124,7 @@ export class BrowserPanel {
 				return;
 			}
 
-			this.open = { meta, messages };
+			this.open = { meta, messages, view: messages, query: "", scope: "all" };
 			const pageSize = this.pageSize();
 			this.post({
 				type: "sessionOpened",
@@ -176,7 +186,7 @@ export class BrowserPanel {
 				this.post({
 					type: "sessionPage",
 					offset,
-					messages: this.open.messages.slice(offset, offset + size),
+					messages: this.open.view.slice(offset, offset + size),
 				});
 				break;
 			}
@@ -185,8 +195,12 @@ export class BrowserPanel {
 				if (!this.open) {
 					break;
 				}
-				// Deep-search results point at a message index; send everything
-				// up to it so the target is present when the view scrolls.
+				// Deep-search results point at an index in the whole session, so
+				// any filter is dropped before scrolling to one.
+				this.open.view = this.open.messages;
+				this.open.query = "";
+				this.open.scope = "all";
+
 				const target = Number(message.index) || 0;
 				const end = Math.min(this.open.messages.length, target + this.pageSize());
 				this.post({
@@ -195,6 +209,35 @@ export class BrowserPanel {
 					replace: true,
 					messages: this.open.messages.slice(0, end),
 					scrollTo: target,
+					total: this.open.messages.length,
+					query: "",
+					scope: "all",
+				});
+				break;
+			}
+
+			case "filterSession": {
+				if (!this.open) {
+					break;
+				}
+				const query = String(message.query || "");
+				const scope: MessageScope = isMessageScope(message.scope) ? message.scope : "all";
+				const { messages: matched } = filterMessages(this.open.messages, query, scope);
+
+				this.open.view = matched;
+				this.open.query = query;
+				this.open.scope = scope;
+
+				this.post({
+					type: "sessionFiltered",
+					query,
+					scope,
+					// The webview highlights matches, and parsing the query once
+					// here keeps both ends agreeing on what a term is.
+					terms: parseQuery(query),
+					total: matched.length,
+					sessionTotal: this.open.messages.length,
+					messages: matched.slice(0, this.pageSize()),
 				});
 				break;
 			}

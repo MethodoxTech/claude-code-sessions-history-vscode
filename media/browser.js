@@ -102,8 +102,12 @@
 		messages: [],
 		total: 0,
 		rendered: 0,
+		sessionTotal: 0,
 		searching: false,
 		loadingAll: false,
+		filterQuery: "",
+		filterScope: "all",
+		filterTerms: [],
 	};
 
 	function persist() {
@@ -502,13 +506,182 @@
 			'<button class="button" data-icon data-action="transcript" style="--icon:var(--icon-file)">Transcript</button>' +
 			"</div></header>";
 
-		el.conversation.innerHTML = header + '<div id="messages"></div>';
+		el.conversation.innerHTML = header + filterRowHtml() + '<div id="messages"></div>';
 		appendMessages(state.messages, true);
+		updateFilterStatus();
+	}
+
+	function filterRowHtml() {
+		const scopes = [
+			["all", "All messages"],
+			["user", "From you"],
+			["assistant", "From Claude"],
+			["tools", "Tool calls"],
+			["changes", "File changes"],
+		];
+		let options = "";
+		for (let i = 0; i < scopes.length; i++) {
+			options +=
+				'<option value="' +
+				scopes[i][0] +
+				'"' +
+				(scopes[i][0] === state.filterScope ? " selected" : "") +
+				">" +
+				escapeHtml(scopes[i][1]) +
+				"</option>";
+		}
+
+		return (
+			'<div class="filter-row">' +
+			'<label class="search filter-search" for="msg-filter">' +
+			'<span class="search-icon" aria-hidden="true"></span>' +
+			'<input id="msg-filter" type="search" spellcheck="false" autocomplete="off" ' +
+			'placeholder="Filter this session" value="' +
+			escapeHtml(state.filterQuery) +
+			'"></label>' +
+			'<select id="msg-scope" aria-label="Limit the filter to">' +
+			options +
+			"</select>" +
+			'<span class="filter-count" id="filter-count"></span>' +
+			'<button class="button" type="button" data-action="clear-filter" hidden>Clear</button>' +
+			"</div>"
+		);
+	}
+
+	function filterIsActive() {
+		return state.filterQuery.trim().length > 0 || state.filterScope !== "all";
+	}
+
+	function updateFilterStatus() {
+		const count = document.getElementById("filter-count");
+		const clear = el.conversation.querySelector('[data-action="clear-filter"]');
+		if (!count || !clear) {
+			return;
+		}
+		if (filterIsActive()) {
+			count.innerHTML =
+				'<span class="num">' +
+				state.total +
+				'</span> of <span class="num">' +
+				state.sessionTotal +
+				"</span> messages";
+			clear.hidden = false;
+		} else {
+			count.textContent = "";
+			clear.hidden = true;
+		}
+	}
+
+	let messageFilterTimer = null;
+
+	function scheduleFilter() {
+		clearTimeout(messageFilterTimer);
+		messageFilterTimer = setTimeout(applyFilter, 200);
+	}
+
+	function applyFilter() {
+		clearTimeout(messageFilterTimer);
+		state.loadingAll = false;
+		vscode.postMessage({
+			type: "filterSession",
+			query: state.filterQuery,
+			scope: state.filterScope,
+		});
+	}
+
+	function resetFilterState() {
+		state.filterQuery = "";
+		state.filterScope = "all";
+		state.filterTerms = [];
+	}
+
+	/**
+	 * Wrap each matched term in the rendered messages.
+	 *
+	 * Walks text nodes rather than rewriting the HTML, so a term that happens to
+	 * appear inside a tag name, an attribute or a URL cannot corrupt the markup.
+	 */
+	function highlightMatches(root, terms) {
+		if (!terms || terms.length === 0) {
+			return;
+		}
+
+		const pattern = new RegExp(
+			"(" +
+				terms
+					.map(function (term) {
+						// Terms are literal text, so every regex metacharacter
+						// in them has to be escaped before they are joined.
+						return term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+					})
+					.join("|") +
+				")",
+			"gi"
+		);
+
+		const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+			acceptNode: function (node) {
+				if (!node.nodeValue || !node.nodeValue.trim()) {
+					return NodeFilter.FILTER_REJECT;
+				}
+				const parent = node.parentElement;
+				if (!parent || parent.closest("mark, .copy")) {
+					return NodeFilter.FILTER_REJECT;
+				}
+				return NodeFilter.FILTER_ACCEPT;
+			},
+		});
+
+		const targets = [];
+		let node = walker.nextNode();
+		while (node) {
+			targets.push(node);
+			node = walker.nextNode();
+		}
+
+		for (let i = 0; i < targets.length; i++) {
+			const text = targets[i];
+			const value = text.nodeValue;
+			pattern.lastIndex = 0;
+			if (!pattern.test(value)) {
+				continue;
+			}
+
+			pattern.lastIndex = 0;
+			const fragment = document.createDocumentFragment();
+			let last = 0;
+			let match = pattern.exec(value);
+			while (match) {
+				if (match.index > last) {
+					fragment.appendChild(document.createTextNode(value.slice(last, match.index)));
+				}
+				const mark = document.createElement("mark");
+				mark.textContent = match[0];
+				fragment.appendChild(mark);
+				last = match.index + match[0].length;
+				if (match[0].length === 0) {
+					pattern.lastIndex++;
+				}
+				match = pattern.exec(value);
+			}
+			if (last < value.length) {
+				fragment.appendChild(document.createTextNode(value.slice(last)));
+			}
+			text.parentNode.replaceChild(fragment, text);
+		}
 	}
 
 	function appendMessages(messages, replace) {
 		const host = document.getElementById("messages");
 		if (!host) {
+			return;
+		}
+
+		if (replace && messages.length === 0) {
+			host.innerHTML =
+				'<p class="list-empty">No message in this session matches. Use fewer words, or widen the scope.</p>';
+			state.rendered = 0;
+			renderConversationFooter();
 			return;
 		}
 
@@ -520,6 +693,9 @@
 		if (replace) {
 			host.innerHTML = html;
 			state.rendered = messages.length;
+			// Highlight before the copy buttons exist, so their own label can
+			// never be marked up as a match.
+			highlightMatches(host, state.filterTerms);
 			addCopyButtons(host);
 		} else {
 			// Build the batch off-document so its copy buttons are attached
@@ -527,6 +703,7 @@
 			// page makes each one cost more than the last.
 			const batch = document.createElement("div");
 			batch.innerHTML = html;
+			highlightMatches(batch, state.filterTerms);
 			addCopyButtons(batch);
 
 			const fragment = document.createDocumentFragment();
@@ -1166,6 +1343,32 @@
 		vscode.postMessage({ type: "openSession", filePath: filePath });
 	}
 
+	// The filter row is rebuilt with each conversation, so its events are
+	// delegated rather than rebound.
+	el.conversation.addEventListener("input", function (event) {
+		if (event.target.id !== "msg-filter") {
+			return;
+		}
+		state.filterQuery = event.target.value;
+		scheduleFilter();
+	});
+
+	el.conversation.addEventListener("change", function (event) {
+		if (event.target.id !== "msg-scope") {
+			return;
+		}
+		state.filterScope = event.target.value;
+		applyFilter();
+	});
+
+	el.conversation.addEventListener("keydown", function (event) {
+		if (event.target.id === "msg-filter" && event.key === "Escape" && state.filterQuery) {
+			event.target.value = "";
+			state.filterQuery = "";
+			applyFilter();
+		}
+	});
+
 	el.detail.addEventListener("click", function (event) {
 		const target = event.target.closest("button");
 		if (!target) {
@@ -1204,6 +1407,19 @@
 					vscode.postMessage({ type: "toggleBookmark", id: state.meta.id });
 				}
 				break;
+			case "clear-filter": {
+				resetFilterState();
+				const input = document.getElementById("msg-filter");
+				const scope = document.getElementById("msg-scope");
+				if (input) {
+					input.value = "";
+				}
+				if (scope) {
+					scope.value = "all";
+				}
+				applyFilter();
+				break;
+			}
 			case "load-more":
 				vscode.postMessage({ type: "loadMore", offset: state.rendered });
 				break;
@@ -1281,11 +1497,27 @@
 				break;
 			}
 
+			case "sessionFiltered": {
+				state.loadingAll = false;
+				state.filterQuery = message.query || "";
+				state.filterScope = message.scope || "all";
+				state.filterTerms = message.terms || [];
+				state.total = message.total || 0;
+				state.sessionTotal = message.sessionTotal || state.sessionTotal;
+				state.messages = message.messages || [];
+				appendMessages(state.messages, true);
+				updateFilterStatus();
+				el.detail.scrollTop = 0;
+				break;
+			}
+
 			case "sessionOpened": {
 				state.loadingAll = false;
+				resetFilterState();
 				state.meta = message.meta;
 				state.messages = message.messages || [];
 				state.total = message.total || 0;
+				state.sessionTotal = message.total || 0;
 				state.selected = message.meta.filePath;
 				el.welcome.hidden = true;
 				el.stats.hidden = true;
@@ -1302,8 +1534,25 @@
 
 			case "sessionPage": {
 				if (message.replace) {
+					// Jumping to a search result drops any filter, so the row
+					// and its highlighting are reset to match.
+					if (typeof message.query === "string") {
+						resetFilterState();
+						const input = document.getElementById("msg-filter");
+						const scope = document.getElementById("msg-scope");
+						if (input) {
+							input.value = "";
+						}
+						if (scope) {
+							scope.value = "all";
+						}
+					}
+					if (typeof message.total === "number") {
+						state.total = message.total;
+					}
 					state.messages = message.messages || [];
 					appendMessages(state.messages, true);
+					updateFilterStatus();
 				} else {
 					appendMessages(message.messages || [], false);
 				}
