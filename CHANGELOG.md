@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.3
+
+- Filter within an open session. A long session runs to thousands of messages,
+  which is far past what scrolling can find anything in; the conversation now
+  has a filter box that matches message text, thinking, tool calls, diffs and
+  produced files, with matches highlighted in place
+- Terms combine with AND in any order, so `edit cache` finds the message
+  mentioning both. Wrap a phrase in quotes to match it exactly
+- Narrow to what you said, what Claude said, tool calls, or only the messages
+  that changed a file
+
 ## 0.1.2
 
 - Add **Load everything** beside **Show more**, to render the rest of a session
