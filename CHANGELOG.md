@@ -1,7 +1,13 @@
 # Changelog
 
-## 0.1.3
+## 0.2.0
 
+- Resume a session in a Claude Code tab instead of a terminal. When the Claude
+  Code for VS Code extension is installed and the session belongs to the folder
+  open in the window, **Resume** opens it there; other sessions still resume in
+  a terminal started in their own project. `claudeSessions.resumeIn` picks
+  `auto`, `claudeCode` or `terminal`, and **Resume Session in Claude Code** and
+  **Resume Session in Terminal** choose explicitly
 - Filter within an open session. A long session runs to thousands of messages,
   which is far past what scrolling can find anything in; the conversation now
   has a filter box that matches message text, thinking, tool calls, diffs and
