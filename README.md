@@ -42,8 +42,10 @@ and total transcript size.
 **Export to Markdown.** One session or a date range, with thinking and tool calls folded into
 `<details>` blocks and file edits kept as diffs.
 
-**Resume.** Reopen any session in a terminal with `claude --resume`, started in that session's own
-project directory so Claude Code can actually find it. The command is configurable.
+**Resume.** Continue a session in a Claude Code tab, using the Claude Code for VS Code extension,
+when the session belongs to the folder open in this window. Any other session is reopened in a
+terminal with `claude --resume`, started in that session's own project directory so Claude Code can
+actually find it. Where to resume, and the terminal command, are configurable.
 
 **Fast on real histories.** Session metadata is cached against each transcript's size and
 modification time, so only changed transcripts are re-read. Conversations are paged into the view
@@ -77,6 +79,7 @@ Everything is also available from the command palette under **Claude Sessions**.
 | `claudeSessions.pageSize` | `60` | Messages rendered per batch. Lower it for very long sessions. |
 | `claudeSessions.deepSearchIncludesToolCalls` | `false` | Also search tool inputs during a deep search. |
 | `claudeSessions.autoRefresh` | `true` | Refresh when transcripts change on disk. |
+| `claudeSessions.resumeIn` | `auto` | `auto` uses the Claude Code extension when it can resume the session in this window and a terminal otherwise; `claudeCode` or `terminal` always pick one. |
 | `claudeSessions.resumeCommand` | `claude --resume {sessionId}` | The command Resume runs. `{sessionId}` and `{projectPath}` are substituted. |
 
 ## Privacy
@@ -86,7 +89,7 @@ makes no network requests of any kind, collects no telemetry, and needs no sign-
 it stores is a metadata cache and your bookmarks, both in VS Code's own extension storage.
 
 Two actions reach outside VS Code, and only when you ask for them: **Open in browser** on an
-artifact card opens a `claude.ai` link, and **Resume** starts a terminal running Claude Code.
+artifact card opens a `claude.ai` link, and **Resume** continues the session in the Claude Code extension or a terminal running Claude Code.
 
 ## How it works
 

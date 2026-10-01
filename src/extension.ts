@@ -14,7 +14,7 @@ import { BrowserPanel } from "./ui/browserPanel";
 import { SessionStore } from "./store/sessionStore";
 import { SessionMeta } from "./claude/types";
 import { SessionTreeItem, SessionTreeProvider } from "./ui/sessionTree";
-import { exportRange, exportSession, promptForRange, resumeSession } from "./ui/actions";
+import { ResumeTarget, exportRange, exportSession, promptForRange, resumeSession } from "./ui/actions";
 import { fileExists, resolveClaudeHome } from "./claude/paths";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -124,12 +124,17 @@ export function activate(context: vscode.ExtensionContext): void {
 		}
 	});
 
-	register("claudeSessions.resume", async (target?: SessionMeta | SessionTreeItem) => {
-		const session = resolveSession(target) ?? (await pickSession(store, "Resume which session?"));
-		if (session) {
-			resumeSession(session);
-		}
-	});
+	const registerResume = (id: string, where?: ResumeTarget): void =>
+		register(id, async (target?: SessionMeta | SessionTreeItem) => {
+			const session =
+				resolveSession(target) ?? (await pickSession(store, "Resume which session?"));
+			if (session) {
+				await resumeSession(session, where);
+			}
+		});
+	registerResume("claudeSessions.resume");
+	registerResume("claudeSessions.resumeInClaudeCode", "claudeCode");
+	registerResume("claudeSessions.resumeInTerminal", "terminal");
 
 	register("claudeSessions.exportMarkdown", async (target?: SessionMeta | SessionTreeItem) => {
 		const session = resolveSession(target) ?? (await pickSession(store, "Export which session?"));

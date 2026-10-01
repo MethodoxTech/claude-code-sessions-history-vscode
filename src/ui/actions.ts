@@ -12,6 +12,87 @@ import { SessionMeta } from "../claude/types";
 import { fileExists } from "../claude/paths";
 import { sessionToMarkdown, sessionsToMarkdown } from "./markdownExport";
 
+const CLAUDE_CODE_EXTENSION = "anthropic.claude-code";
+/** Opens a conversation tab in the Claude Code extension; takes the session id to resume. */
+const CLAUDE_CODE_OPEN = "claude-vscode.editor.open";
+
+export type ResumeTarget = "claudeCode" | "terminal";
+
+/**
+ * Reopen a session where `claudeSessions.resumeIn` says, or in `target`.
+ *
+ * The Claude Code extension can only resume sessions of the folder it runs in,
+ * so `auto` uses it when that matches and falls back to a terminal otherwise.
+ */
+export async function resumeSession(session: SessionMeta, target?: ResumeTarget): Promise<void> {
+	const preference =
+		target ??
+		vscode.workspace.getConfiguration("claudeSessions").get<string>("resumeIn", "auto");
+	if (preference === "terminal") {
+		resumeInTerminal(session);
+		return;
+	}
+
+	const blocker = claudeCodeBlocker(session);
+	if (!blocker) {
+		try {
+			await vscode.commands.executeCommand(CLAUDE_CODE_OPEN, session.id);
+			return;
+		} catch (error) {
+			void vscode.window.showWarningMessage(
+				`Claude Code could not open the session (${error instanceof Error ? error.message : String(error)}), so it was resumed in a terminal.`
+			);
+			resumeInTerminal(session);
+			return;
+		}
+	}
+
+	if (preference !== "claudeCode") {
+		resumeInTerminal(session);
+		return;
+	}
+
+	const inTerminal = "Resume in Terminal";
+	const openFolder = "Open Project Folder";
+	const choice = await vscode.window.showWarningMessage(
+		blocker,
+		inTerminal,
+		...(fileExists(session.projectPath) ? [openFolder] : [])
+	);
+	if (choice === inTerminal) {
+		resumeInTerminal(session);
+	} else if (choice === openFolder) {
+		await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(session.projectPath), {
+			forceNewWindow: true,
+		});
+	}
+}
+
+/** Why the Claude Code extension cannot resume this session here, or undefined if it can. */
+function claudeCodeBlocker(session: SessionMeta): string | undefined {
+	if (!vscode.extensions.getExtension(CLAUDE_CODE_EXTENSION)) {
+		return "The Claude Code extension is not installed.";
+	}
+	// Claude Code runs in the first workspace folder, or the home directory
+	// with none open, and only finds sessions recorded there.
+	const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? os.homedir();
+	if (!samePath(root, session.projectPath)) {
+		return `Claude Code here works in ${root}, so it cannot resume a session from ${session.projectPath}. Open that folder to resume it in Claude Code.`;
+	}
+	return undefined;
+}
+
+function samePath(a: string, b: string): boolean {
+	if (!a || !b) {
+		return false;
+	}
+	const normalize = (value: string): string => {
+		const resolved = path.resolve(value).replace(/[\\/]+$/, "");
+		return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+	};
+	return normalize(a) === normalize(b);
+}
+
 /**
  * Reopen a session in a terminal.
  *
@@ -19,7 +100,7 @@ import { sessionToMarkdown, sessionsToMarkdown } from "./markdownExport";
  * working directory, so the terminal has to start in the project the session
  * belongs to — otherwise the id will not be found.
  */
-export function resumeSession(session: SessionMeta): void {
+export function resumeInTerminal(session: SessionMeta): void {
 	const configuration = vscode.workspace.getConfiguration("claudeSessions");
 	const template = configuration.get<string>("resumeCommand", "claude --resume {sessionId}");
 

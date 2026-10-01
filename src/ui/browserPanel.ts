@@ -269,7 +269,7 @@ export class BrowserPanel {
 			case "resume": {
 				const meta = this.findSession(String(message.filePath || ""));
 				if (meta) {
-					resumeSession(meta);
+					await resumeSession(meta);
 				}
 				break;
 			}
