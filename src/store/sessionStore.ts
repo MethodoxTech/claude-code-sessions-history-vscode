@@ -27,7 +27,7 @@ import {
  * existing cache is discarded rather than serving stale results forever — a
  * transcript that has not changed is otherwise never re-read.
  */
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 
 interface CacheEntry {
 	mtimeMs: number;

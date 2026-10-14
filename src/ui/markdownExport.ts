@@ -51,7 +51,12 @@ export function sessionToMarkdown(
 			continue;
 		}
 
-		const heading = message.role === "user" ? "### You" : "### Claude";
+		const heading =
+			message.subtype === "notification"
+				? "### Notification"
+				: message.role === "user"
+					? "### You"
+					: "### Claude";
 		const model = message.model ? ` — ${message.model}` : "";
 		const queued = message.subtype === "queued" ? " (queued)" : "";
 		const sidechain = message.sidechain ? " (subagent)" : "";
