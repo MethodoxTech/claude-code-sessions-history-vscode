@@ -29,8 +29,9 @@ artifact in your browser, preview the file, or open it in the editor.
 **Filtering inside a session.** A session of several thousand messages has a filter box of its
 own: type to keep only the messages that match, across message text, thinking, tool calls, diffs and
 the files a session produced, with every match highlighted. Terms combine in any order, quotes match
-a phrase, and you can narrow to what you said, what Claude said, tool calls, or only the messages
-that changed a file.
+a phrase, and you can narrow to what you said, what Claude said, tool calls, notifications, or only the
+messages that changed a file. Claude Code injects notices as user-role messages, so **From you**
+leaves those out and keeps to what you actually typed.
 
 **Search that reaches the message bodies.** Filter by title, project or branch instantly, or turn on
 deep search to scan the text of every message in every transcript. Results stream in as they are
